@@ -36,6 +36,11 @@
 							<artifactId>mysql-connector-java</artifactId>
 						</sharedLibrary>
 					</sharedLibraries>
+				 <muleDeploy>true</muleDeploy>
+                                 <env>sandbox</env>
+                                 <username>saiswisep24</username>
+                                 <password>Tanvi@2022</password>
+                                 <deploymentType>cloud</deploymentType>
 				</configuration>
 			</plugin>
 		</plugins>
