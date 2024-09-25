@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="5419a92e-d91b-464f-96ac-7b0da0346967" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" password="Admin@123" database="my_db1"/>
+	</db:config>
+	<sub-flow name="insert-covid-case-sub-flow" doc:id="3183da33-ee94-41b8-9c9f-b806e460f015" >
+		<logger level="DEBUG" doc:name="Start Log" doc:id="aab1fa7e-56ff-48c5-b6b7-712633bdcc79" message='#["Before insert covid case database call"]'/>
+		<db:insert doc:name="Insert" doc:id="b1c8cc13-e82a-47c8-847f-709edf723f3c" config-ref="Database_Config" autoGenerateKeys="true">
+			<db:sql ><![CDATA[INSERT INTO cvd_case_master 
+  (source, case_type, first_name, last_name, phone, email, date_of_birth, national_id, national_id_type, street_address, city, state, postal, country, create_date, update_date, create_by, update_by)
+VALUES 
+  (:source, :case_type, :first_name, :last_name, :phone, :email, :date_of_birth, :national_id, :national_id_type, :street_address, :city, :state, :postal, :country, :create_date, :update_date, :create_by, :update_by);
+]]></db:sql>
+			<db:input-parameters ><![CDATA[#[%dw 2.0
+output application/java
+var currentDate = now() as String { format: "YYYY-MM-dd" }
+var owner = "UHIS"
+---
+{
+	source: vars.inputPayload.source,
+	case_type: vars.inputPayload.caseType,
+	first_name: vars.inputPayload.firstName,
+	last_name: vars.inputPayload.lastName,
+	phone: vars.inputPayload.phone,
+	email: vars.inputPayload.email,
+	date_of_birth: vars.inputPayload.dateOfBirth as String { format: "YYYY-MM-dd" },
+	national_id: vars.inputPayload.nationalID,
+	national_id_type: vars.inputPayload.nationalIDType,
+	street_address: vars.inputPayload.address.streetAddress,
+	city: vars.inputPayload.address.city,
+	state: upper(vars.inputPayload.address.state),
+	postal: vars.inputPayload.address.postal,
+	country: vars.inputPayload.address.country,
+	create_date: currentDate,
+	update_date: currentDate,
+	create_by: owner,
+	update_by: owner
+}]]]></db:input-parameters>
+			<db:auto-generated-keys-column-names >
+				<db:auto-generated-keys-column-name value="CASE_ID" />
+			</db:auto-generated-keys-column-names>
+		</db:insert>
+		<logger level="DEBUG" doc:name="End Log" doc:id="c602392c-3728-41c5-bb98-c083c6948409" message='#["Complete insert covid case database call"]'/>
+	</sub-flow>
+</mule>

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+	<flow name="put:\cases:application\xml:uhub-sapi-config">
+		<ee:transform doc:name="Set correlationId And inputPayload" doc:id="db229894-babc-4a91-8172-22d2092eff96" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="correlationId" ><![CDATA[%dw 2.0
+output application/java
+---
+attributes.headers.'x-correlation-id' default payload.covidCase.caseID]]></ee:set-variable>
+				<ee:set-variable variableName="inputPayload" ><![CDATA[%dw 2.0
+output application/java
+---
+payload.covidCase]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO" doc:name="Start Log" doc:id="eda32b57-d9c1-42c4-aad4-f32877c68411" message='transactionID: #[vars.transactionId], correlationID: #[vars.correlationId], message: "Started update covid case flow", payload: #[payload]' />
+		<ee:transform doc:name="Prepare Covid Case Payload" doc:id="0c34b238-2244-4016-b962-643671445f2d" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="covidCasePayload" ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	case_id: vars.inputPayload.caseID,
+	source: vars.inputPayload.source,
+	case_type: vars.inputPayload.caseType,
+	first_name: vars.inputPayload.firstName,
+	last_name: vars.inputPayload.lastName,
+	phone: vars.inputPayload.phone,
+	email: vars.inputPayload.email,
+	date_of_birth: vars.inputPayload.dateOfBirth as String {
+		format: "yyyy-MM-dd"
+	},
+	national_id: vars.inputPayload.nationalID,
+	national_id_type: vars.inputPayload.nationalIDType,
+	street_address: vars.inputPayload.address.streetAddress,
+	city: vars.inputPayload.address.city,
+	state: upper(vars.inputPayload.address.state),
+	postal: vars.inputPayload.address.postal,
+	country: vars.inputPayload.address.country,
+	update_date: now() as String {
+		format: "yyyy-MM-dd"
+	},
+	create_by: "UHIS",
+	update_by: "UHIS"
+}
+]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<db:update doc:id="0700035a-ffeb-43a7-bcc7-72fcd34cce37" config-ref="Database_Config" doc:name="Update Covid Case Master" >
+			<db:sql ><![CDATA[update cvd_case_master set source=:source, case_type=:case_type, first_name=:first_name, last_name=:last_name, phone=:phone, email=:email, date_of_birth=:date_of_birth, national_id=:national_id, national_id_type=:national_id_type, street_address=:street_address, city=:city, state=:state, postal=:postal, country=:country, update_date=:update_date, create_by=:create_by, update_by=:update_by where case_id=:case_id]]></db:sql>
+			<db:input-parameters ><![CDATA[#[vars.covidCasePayload]]]></db:input-parameters>
+		</db:update>
+		<ee:transform doc:name="Set Success Response" doc:id="1674d7ba-e26c-4df8-bd22-98583a68ae14" xsi:schemaLocation="&#10;http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+if (payload.affectedRows > 0 ) {
+	caseID: vars.covidCasePayload.case_id
+} else {}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="End Log" doc:id="b7c330ea-d8a3-49f0-a5c6-d945f386f768" message='transactionID: #[vars.transactionId], correlationID: #[vars.correlationId], message: "Completed update covid case flow", payload: #[payload]' />
+    </flow>
+	</mule>
